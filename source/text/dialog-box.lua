@@ -1,3 +1,5 @@
+import("CoreLibs/sprites")
+
 local gfx <const> = playdate.graphics
 
 -- Speed constants (milliseconds per character)
@@ -58,6 +60,12 @@ local FONT_PRESETS = {
 ---@field getCurrentInfo fun(self: DialogBox): table
 
 DialogBox = {}
+DialogBox.__index = DialogBox
+
+-- Make DialogBox extend gfx.sprite
+setmetatable(DialogBox, {
+	__index = gfx.sprite,
+})
 
 -- Default configuration
 local DEFAULT_CONFIG = {
@@ -174,8 +182,9 @@ end
 ---@param config DialogBoxConfig Configuration for the dialog box
 ---@return DialogBox
 function DialogBox.new(config)
-	local self = {}
-	setmetatable(self, { __index = DialogBox })
+	-- Create sprite instance
+	local self = gfx.sprite.new()
+	setmetatable(self, DialogBox)
 
 	-- Merge config with defaults
 	self.dialogs = config.dialogs or {}
@@ -200,7 +209,6 @@ function DialogBox.new(config)
 	self.charKerning = config.charKerning or DEFAULT_CONFIG.charKerning
 
 	-- State
-	self.visible = false
 	self.currentDialogIndex = 1
 	self.currentPageIndex = 1
 	self.pages = {}
@@ -215,12 +223,23 @@ function DialogBox.new(config)
 	self.textWidth = self.boxWidth - (self.padding * 2)
 	self.textHeight = self.boxHeight - (self.padding * 2)
 
+	-- Set sprite bounds (includes name tag area above the box)
+	local nameTagHeight = 30 -- Approximate max height for name tag
+	local totalHeight = self.boxHeight + nameTagHeight
+	self:setBounds(0, self.boxY - nameTagHeight, 400, totalHeight)
+	self:setCenter(0, 0) -- Use top-left as anchor point
+	self:moveTo(0, self.boxY - nameTagHeight)
+	self:setZIndex(1000) -- Draw on top of other sprites
+
+	-- Start hidden
+	self:setVisible(false)
+
 	return self
 end
 
 -- Show the dialog box and start from the first dialog
 function DialogBox:show()
-	self.visible = true
+	self:setVisible(true)
 	self.currentDialogIndex = 1
 	self.currentPageIndex = 1
 	self:_prepareCurrentDialog()
@@ -228,13 +247,11 @@ end
 
 -- Hide the dialog box
 function DialogBox:hide()
-	self.visible = false
+	self:setVisible(false)
 end
 
--- Check if dialog box is visible
-function DialogBox:isVisible()
-	return self.visible
-end
+-- Check if dialog box is visible (override to use sprite's isVisible)
+-- Note: We don't need to override this - just use the sprite's built-in isVisible() method
 
 -- Check if text is still animating (typewriter effect)
 function DialogBox:isTextAnimating()
@@ -261,11 +278,14 @@ function DialogBox:_prepareCurrentDialog()
 	else
 		self.isAnimating = true
 	end
+
+	-- Mark sprite as dirty since content changed
+	self:markDirty()
 end
 
 -- Advance to next page or next dialog
 function DialogBox:next()
-	if not self.visible then
+	if not self:isVisible() then
 		return
 	end
 
@@ -274,6 +294,7 @@ function DialogBox:next()
 		local pageText = pageToText(self.pages[self.currentPageIndex])
 		self.displayedCharCount = #stringToTable(pageText)
 		self.isAnimating = false
+		self:markDirty()
 		return
 	end
 
@@ -288,6 +309,7 @@ function DialogBox:next()
 			local pageText = pageToText(self.pages[self.currentPageIndex])
 			self.displayedCharCount = #stringToTable(pageText)
 		end
+		self:markDirty()
 		return
 	end
 
@@ -299,13 +321,13 @@ function DialogBox:next()
 	end
 
 	-- All dialogs complete
-	self.visible = false
+	self:setVisible(false)
 	self.onComplete()
 end
 
--- Update typewriter animation
+-- Update typewriter animation (override sprite's update method)
 function DialogBox:update()
-	if not self.visible or not self.isAnimating then
+	if not self:isVisible() or not self.isAnimating then
 		return
 	end
 
@@ -323,15 +345,15 @@ function DialogBox:update()
 			self.displayedCharCount = totalChars
 			self.isAnimating = false
 		end
+
+		-- Mark sprite as dirty since displayed text changed
+		self:markDirty()
 	end
 end
 
--- Draw the dialog box
-function DialogBox:draw()
-	if not self.visible then
-		return
-	end
-
+-- Draw the dialog box (sprite draw callback)
+-- x, y, width, height are the dirty rect being updated (in sprite-local coordinates)
+function DialogBox:draw(x, y, width, height)
 	local dialog = self.dialogs[self.currentDialogIndex]
 	if not dialog then
 		return
@@ -341,13 +363,20 @@ function DialogBox:draw()
 	local fgColor = self.invert and gfx.kColorWhite or gfx.kColorBlack
 	local drawMode = self.invert and gfx.kDrawModeInverted or gfx.kDrawModeCopy
 
+	-- Calculate sprite-local coordinates
+	-- The sprite's top-left is at (0, 0) in sprite coordinates
+	-- We need to offset from screen coordinates to sprite-local coordinates
+	local nameTagHeight = 30 -- Same as in new()
+	local localBoxX = self.boxX
+	local localBoxY = nameTagHeight -- Box starts at nameTagHeight in sprite-local coords
+
 	-- Draw main dialog box background
 	gfx.setColor(bgColor)
-	gfx.fillRoundRect(self.boxX, self.boxY, self.boxWidth, self.boxHeight, self.cornerRadius)
+	gfx.fillRoundRect(localBoxX, localBoxY, self.boxWidth, self.boxHeight, self.cornerRadius)
 
 	-- Draw main dialog box border
 	gfx.setColor(fgColor)
-	gfx.drawRoundRect(self.boxX, self.boxY, self.boxWidth, self.boxHeight, self.cornerRadius)
+	gfx.drawRoundRect(localBoxX, localBoxY, self.boxWidth, self.boxHeight, self.cornerRadius)
 
 	-- Draw name tag if speaker exists
 	if dialog.speaker and #dialog.speaker > 0 then
@@ -355,8 +384,8 @@ function DialogBox:draw()
 		local nameWidth, nameHeight = gfx.getTextSize(dialog.speaker)
 		local tagWidth = nameWidth + (self.nameTagPadding * 2)
 		local tagHeight = nameHeight + (self.nameTagPadding * 2)
-		local tagX = self.boxX + self.padding
-		local tagY = self.boxY - tagHeight + self.nameTagOverlap
+		local tagX = localBoxX + self.padding
+		local tagY = localBoxY - tagHeight + self.nameTagOverlap
 
 		-- Name tag background
 		gfx.setColor(bgColor)
@@ -374,8 +403,8 @@ function DialogBox:draw()
 	-- Draw dialog text
 	local page = self.pages[self.currentPageIndex] or {}
 
-	local textX = self.boxX + self.padding
-	local textY = self.boxY + self.padding
+	local textX = localBoxX + self.padding
+	local textY = localBoxY + self.padding
 
 	gfx.setFont(self.font)
 	gfx.setImageDrawMode(drawMode)
@@ -415,8 +444,8 @@ function DialogBox:draw()
 	-- Draw "continue" arrow when not animating and there are more pages/dialogs
 	local hasMore = self.currentPageIndex < #self.pages or self.currentDialogIndex < #self.dialogs
 	if not self.isAnimating and hasMore then
-		local indicatorX = self.boxX + self.boxWidth - self.padding - 8
-		local indicatorY = self.boxY + self.boxHeight - self.padding - 4
+		local indicatorX = localBoxX + self.boxWidth - self.padding - 8
+		local indicatorY = localBoxY + self.boxHeight - self.padding - 4
 		gfx.setColor(fgColor)
 		gfx.fillTriangle(indicatorX, indicatorY - 6, indicatorX + 6, indicatorY - 6, indicatorX + 3, indicatorY)
 	end

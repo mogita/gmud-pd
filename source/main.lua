@@ -1,12 +1,16 @@
 import("CoreLibs/graphics")
+import("CoreLibs/sprites")
 import("text/dialog-box")
 
 local gfx <const> = playdate.graphics
 
--- Load character image once
-local characterImg = gfx.image.new("images/xiao-shu-tong.png")
+-- Create character sprite
+local characterSprite = gfx.sprite.new()
+characterSprite:setImage(gfx.image.new("images/xiao-shu-tong.png"))
+characterSprite:moveTo(180, 100)
+characterSprite:add()
 
--- Create dialog box
+-- Create dialog box sprite
 local dialog = DialogBox.new({
 	dialogs = {
 		{
@@ -23,18 +27,16 @@ local dialog = DialogBox.new({
 	invert = false,
 })
 
+-- Add dialog sprite to display list
+dialog:add()
+
+-- Clear screen once at startup
+gfx.clear()
+
 function playdate.update()
-	-- Clear screen
-	gfx.clear()
-
-	-- Draw background/character
-	if characterImg then
-		characterImg:draw(180, 100)
-	end
-
-	-- Update and draw dialog
-	dialog:update()
-	dialog:draw()
+	-- Update sprites (includes character and dialog box)
+	-- This only redraws dirty rects, not the entire screen!
+	gfx.sprite.update()
 
 	-- Handle input
 	if playdate.buttonJustPressed(playdate.kButtonA) or playdate.buttonJustPressed(playdate.kButtonDown) then
