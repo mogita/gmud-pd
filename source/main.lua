@@ -9,6 +9,29 @@ local Camera = import("camera")
 local Player = import("player")
 local Map = import("map")
 
+-- Game configuration
+local MAP_SCALE <const> = 2.0 -- Scale factor for the map (1.0 = original size, 2.0 = double size)
+
+-- Layout constants (screen height = 240px)
+-- Stack containers vertically like CSS flexbox with flex-direction: column
+local MAP_AREA_HEIGHT <const> = 98 -- Map container height
+local PLAYER_AREA_HEIGHT <const> = 32 -- Player container height
+local DIALOG_AREA_HEIGHT <const> = 110 -- Dialog container height (90px box + 20px margins)
+
+-- Container boundaries (stacked vertically)
+local MAP_TOP <const> = 0
+local MAP_BOTTOM <const> = MAP_TOP + MAP_AREA_HEIGHT -- y=98
+
+local PLAYER_TOP <const> = MAP_BOTTOM -- y=98
+local PLAYER_BOTTOM <const> = PLAYER_TOP + PLAYER_AREA_HEIGHT -- y=130
+
+local DIALOG_TOP <const> = PLAYER_BOTTOM -- y=130
+local DIALOG_BOTTOM <const> = DIALOG_TOP + DIALOG_AREA_HEIGHT -- y=240
+
+-- Y positions for elements
+local MAP_BOTTOM_Y <const> = MAP_BOTTOM -- Map image bottom aligns at y=98
+local PLAYER_Y <const> = PLAYER_BOTTOM -- Player sprite bottom at y=130 (with bottom-center anchor)
+
 -- Game state
 local camera
 local player
@@ -17,20 +40,26 @@ local dialog
 
 -- Initialize game
 function initialize()
-	-- Set to maximum frame rate for smoother movement (default is 30)
-	playdate.display.setRefreshRate(50)
-
-	-- Create camera with 100px scroll trigger offset
-	camera = Camera.new({
-		mapWidth = 758, -- Map width from image (758px)
-		scrollTriggerOffset = 100,
-	})
+	-- Set to maximum frame rate for smoother movement (default is 30, max is 50)
+	playdate.display.setRefreshRate(30)
 
 	-- Create map with image background
 	map = Map.new({
-		imagePath = "images/maps/1", -- Load map image (758x80px)
-		camera = camera,
+		imagePath = "images/maps/1", -- Load map image (758x80px native)
+		camera = nil, -- Will be set after camera is created
+		scale = MAP_SCALE,
+		bottomY = MAP_BOTTOM_Y, -- Map bottom aligns with player top (y=208)
 	})
+
+	-- Create camera with 100px scroll trigger offset
+	-- Use the scaled map width
+	camera = Camera.new({
+		mapWidth = map:getWidth(), -- Use scaled map width
+		scrollTriggerOffset = 100,
+	})
+
+	-- Set the camera reference in the map
+	map.camera = camera
 
 	-- Set up background drawing callback for the sprite system
 	-- This ensures the map is drawn as part of the sprite update cycle
@@ -47,9 +76,9 @@ function initialize()
 	player = Player.new({
 		imagePath = "images/xiao-shu-tong.png",
 		startX = 50, -- Start at left side of map
-		startY = 120, -- Bottom of upper half (player's horizontal line)
+		startY = PLAYER_Y, -- Player center Y position (224, with bottom at 240)
 		moveSpeed = 2,
-		mapWidth = 758, -- Match map width
+		mapWidth = map:getWidth(), -- Use scaled map width
 		camera = camera,
 	})
 	player:add()

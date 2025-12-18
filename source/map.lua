@@ -9,39 +9,52 @@ local gfx <const> = playdate.graphics
 local _ = import("camera")
 
 ---@class Map
----@field width number Total width of the map in pixels
----@field height number Height of the map image
----@field camera Camera Reference to the camera
+---@field width number Total width of the map in pixels (scaled)
+---@field height number Height of the map image (scaled)
+---@field originalWidth number Original width of the map image
+---@field originalHeight number Original height of the map image
+---@field scale number Scale factor for the map
+---@field bottomY number Y coordinate where the map's bottom edge should be
+---@field camera Camera? Reference to the camera
 ---@field mapImage playdate.graphics.image? Map background image (optional)
 ---@field patternImage playdate.graphics.image? Repeating pattern for background (fallback)
 local Map = {}
 Map.__index = Map
 
 ---Create a new map
----@param config {width: number?, camera: Camera, imagePath: string?}
+---@param config {width: number?, camera: Camera?, imagePath: string?, scale: number?, bottomY: number?}
 ---@return Map
 function Map.new(config)
 	local self = setmetatable({}, Map)
 
 	self.camera = config.camera
+	self.scale = config.scale or 1.0
+	self.bottomY = config.bottomY or 208 -- Default: map bottom at y=208
 
 	-- Load map image if provided
 	if config.imagePath then
 		self.mapImage = gfx.image.new(config.imagePath)
 		if self.mapImage then
 			local imgWidth, imgHeight = self.mapImage:getSize()
-			self.width = imgWidth
-			self.height = imgHeight
+			self.originalWidth = imgWidth
+			self.originalHeight = imgHeight
+			-- Calculate scaled dimensions
+			self.width = math.floor(imgWidth * self.scale)
+			self.height = math.floor(imgHeight * self.scale)
 		else
 			-- Fallback to pattern if image fails to load
-			self.width = config.width or 800
-			self.height = 120
+			self.originalWidth = config.width or 800
+			self.originalHeight = 120
+			self.width = math.floor(self.originalWidth * self.scale)
+			self.height = math.floor(self.originalHeight * self.scale)
 			self.patternImage = self:createPattern()
 		end
 	else
 		-- Fallback to pattern-based map
-		self.width = config.width or 800
-		self.height = 120 -- Upper half of screen
+		self.originalWidth = config.width or 800
+		self.originalHeight = 120
+		self.width = math.floor(self.originalWidth * self.scale)
+		self.height = math.floor(self.originalHeight * self.scale)
 		self.patternImage = self:createPattern()
 	end
 
@@ -74,14 +87,15 @@ end
 ---Draw the map background
 function Map:draw()
 	if self.mapImage then
-		-- Draw map image
-		-- Position: bottom of image aligns with y=120 (player's horizontal line)
+		-- Draw map image with scaling
+		-- Position: bottom of image aligns with self.bottomY (default y=208)
 		local screenX = self.camera:worldToScreen(0)
-		local screenY = 120 - self.height
+		local screenY = self.bottomY - self.height
 
 		-- Only draw if visible on screen
 		if screenX < 400 and screenX + self.width > 0 then
-			self.mapImage:draw(screenX, screenY)
+			-- Use drawScaled to draw the image at the specified scale
+			self.mapImage:drawScaled(screenX, screenY, self.scale)
 		end
 	else
 		-- Draw repeating pattern (fallback)

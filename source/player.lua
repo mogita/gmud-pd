@@ -38,11 +38,12 @@ function Player.new(config)
 	self:setImage(image)
 
 	-- Set anchor to bottom-center (0.5, 1.0)
+	-- This means the sprite's bottom-center point is at worldY
 	self:setCenter(0.5, 1.0)
 
 	-- World position (absolute coordinates in the map)
 	self.worldX = config.startX or 50
-	self.worldY = config.startY or 120 -- Bottom of upper half
+	self.worldY = config.startY or 224 -- Center Y of player area (bottom at 240)
 
 	-- Movement settings
 	self.moveSpeed = config.moveSpeed or 3
