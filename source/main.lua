@@ -16,7 +16,7 @@ local MAP_SCALE <const> = 2.0 -- Scale factor for the map (1.0 = original size, 
 -- Stack containers vertically like CSS flexbox with flex-direction: column
 local MAP_AREA_HEIGHT <const> = 108 -- Map container height
 local PLAYER_AREA_HEIGHT <const> = 32 -- Player container height
-local DIALOG_AREA_HEIGHT <const> = 100 -- Dialog container height (90px box + 20px margins)
+local DIALOG_AREA_HEIGHT <const> = 100 -- Dialog container height (70px box + 10px margins + ~20px name tag)
 
 -- Container boundaries (stacked vertically)
 local MAP_TOP <const> = 0

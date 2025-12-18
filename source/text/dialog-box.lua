@@ -87,10 +87,10 @@ setmetatable(DialogBox, {
 local DEFAULT_CONFIG = {
 	marginX = 5,
 	marginY = 5,
-	boxHeight = 90,
+	boxHeight = 70, -- Reduced from 90 to make room for player
 	padding = 10,
-	nameTagPadding = 6,
-	nameTagOverlap = 8,
+	nameTagPadding = 4,
+	nameTagOverlap = 6, -- No overlap to avoid covering player
 	cornerRadius = 0,
 	lineHeightFactor = 1.3,
 	charKerning = 0,
