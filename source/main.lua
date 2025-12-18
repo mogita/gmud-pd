@@ -21,12 +21,12 @@ local dialog = DialogBox.new({
 	speed = "fast", -- "instant", "fast", "slow"
 	fontSize = "medium", -- "small" (12px), "medium" (16px), "large" (18px)
 	invert = false,
-	onComplete = function()
-		print("Dialog complete!")
-	end,
 })
 
 function playdate.update()
+	-- Clear screen
+	gfx.clear()
+
 	-- Draw background/character
 	if characterImg then
 		characterImg:draw(180, 100)

@@ -114,17 +114,7 @@ end
 local function paginateText(text, font, width, height, lineHeightFactor, charKerning)
 	local chars = stringToTable(text)
 	local pages = {}
-	local _, linesPerPage, lineHeight = calculatePageCapacity(font, width, height, lineHeightFactor, charKerning)
-
-	print(
-		string.format(
-			"Pagination: width=%d, height=%d, linesPerPage=%d, lineHeight=%.1f",
-			width,
-			height,
-			linesPerPage,
-			lineHeight
-		)
-	)
+	local _, linesPerPage = calculatePageCapacity(font, width, height, lineHeightFactor, charKerning)
 
 	gfx.setFont(font)
 	local currentPage = {}
@@ -175,15 +165,6 @@ local function paginateText(text, font, width, height, lineHeightFactor, charKer
 	-- Ensure at least one page
 	if #pages == 0 then
 		pages = { {} }
-	end
-
-	-- Debug: print pages
-	print("=== Pagination Debug ===")
-	for i, page in ipairs(pages) do
-		print(string.format("Page %d: %d lines", i, #page))
-		for j, line in ipairs(page) do
-			print(string.format("  Line %d: [%s]", j, line))
-		end
 	end
 
 	return pages
@@ -285,27 +266,14 @@ end
 -- Advance to next page or next dialog
 function DialogBox:next()
 	if not self.visible then
-		print("next() called but not visible")
 		return
 	end
-
-	print(
-		string.format(
-			"next() - dialog %d/%d, page %d/%d, animating=%s",
-			self.currentDialogIndex,
-			#self.dialogs,
-			self.currentPageIndex,
-			#self.pages,
-			tostring(self.isAnimating)
-		)
-	)
 
 	-- If still animating, complete the current page instantly
 	if self.isAnimating then
 		local pageText = pageToText(self.pages[self.currentPageIndex])
 		self.displayedCharCount = #stringToTable(pageText)
 		self.isAnimating = false
-		print("  -> Completed animation")
 		return
 	end
 
@@ -320,7 +288,6 @@ function DialogBox:next()
 			local pageText = pageToText(self.pages[self.currentPageIndex])
 			self.displayedCharCount = #stringToTable(pageText)
 		end
-		print(string.format("  -> Advanced to page %d", self.currentPageIndex))
 		return
 	end
 
@@ -328,12 +295,10 @@ function DialogBox:next()
 	if self.currentDialogIndex < #self.dialogs then
 		self.currentDialogIndex += 1
 		self:_prepareCurrentDialog()
-		print(string.format("  -> Advanced to dialog %d", self.currentDialogIndex))
 		return
 	end
 
 	-- All dialogs complete
-	print("  -> All dialogs complete, hiding")
 	self.visible = false
 	self.onComplete()
 end
