@@ -5,6 +5,9 @@ import "CoreLibs/graphics"
 
 local gfx <const> = playdate.graphics
 
+-- Import Camera for type checking (Lua LS will now understand the types)
+local _ = import("camera")
+
 ---@class Map
 ---@field width number Total width of the map in pixels
 ---@field height number Height of the map area (upper half = 120px)

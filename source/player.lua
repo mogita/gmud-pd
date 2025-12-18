@@ -6,6 +6,9 @@ import("CoreLibs/sprites")
 
 local gfx <const> = playdate.graphics
 
+-- Import Camera for type checking (Lua LS will now understand the types)
+local _ = import("camera")
+
 ---@class Player : playdate.graphics.sprite
 ---@field worldX number Player's position in world coordinates
 ---@field worldY number Player's position in world coordinates (fixed for now)

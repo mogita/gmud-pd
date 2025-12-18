@@ -5,9 +5,13 @@
   "format.defaultConfig": { "indent_style": "space", "indent_size": "4" },
   "runtime.builtin": { "io": "disable", "os": "disable", "package": "disable" },
   "runtime.nonstandardSymbol": ["+=", "-=", "*=", "/=", "//=", "%=", "<<=", ">>=", "&=", "|=", "^="],
+  "runtime.special": {
+    "import": "require"
+  },
   "runtime.version": "Lua 5.4",
   "workspace.preloadFileSize": 1000,
   "workspace.library": [
-    "/Users/mogita/Developer/playdate-luacats"
+    "/Users/mogita/Developer/playdate-luacats",
+    "source"
   ]
 }
