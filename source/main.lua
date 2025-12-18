@@ -14,9 +14,13 @@ local camera
 local player
 local map
 local dialog
+local lastCameraOffset = 0 -- Track camera position to detect changes
 
 -- Initialize game
 function initialize()
+	-- Set to maximum frame rate for smoother movement (default is 30)
+	playdate.display.setRefreshRate(50)
+
 	-- Create camera with 100px scroll trigger offset
 	camera = Camera.new({
 		mapWidth = 1200, -- Map is 3x screen width
@@ -34,7 +38,7 @@ function initialize()
 		imagePath = "images/xiao-shu-tong.png",
 		startX = 50, -- Start at left side of map
 		startY = 120, -- Bottom of upper half
-		moveSpeed = 3,
+		moveSpeed = 2,
 		mapWidth = 1200,
 		camera = camera,
 	})
@@ -64,8 +68,12 @@ initialize()
 
 ---@diagnostic disable-next-line: duplicate-set-field
 function playdate.update()
-	-- Draw map background (upper half)
-	map:draw()
+	-- Only redraw map when camera position changes (reduces flicker)
+	local currentCameraOffset = camera:getOffset()
+	if currentCameraOffset ~= lastCameraOffset then
+		map:draw()
+		lastCameraOffset = currentCameraOffset
+	end
 
 	-- Disable player movement when dialog is visible
 	player:setCanMove(not dialog:isVisible())
