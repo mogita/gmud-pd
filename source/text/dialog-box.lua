@@ -461,13 +461,26 @@ function DialogBox:draw(x, y, width, height)
 		currentY += lineHeight
 	end
 
-	-- Draw "continue" arrow when not animating and there are more pages/dialogs
+	-- Draw A button indicator when not animating and there are more pages/dialogs
 	local hasMore = self.currentPageIndex < #self.pages or self.currentDialogIndex < #self.dialogs
 	if not self.isAnimating and hasMore then
-		local indicatorX = localBoxX + self.boxWidth - self.padding - 8
-		local indicatorY = localBoxY + self.boxHeight - self.padding - 4
-		gfx.setColor(fgColor)
-		gfx.fillTriangle(indicatorX, indicatorY - 6, indicatorX + 6, indicatorY - 6, indicatorX + 3, indicatorY)
+		-- Save current font
+		local currentFont = gfx.getFont()
+
+		-- Use system font which contains the A button glyph (Ⓐ)
+		local systemFont = gfx.getSystemFont()
+		gfx.setFont(systemFont)
+
+		-- Draw the A button glyph
+		local buttonText = "Ⓐ"
+		local buttonWidth = gfx.getTextSize(buttonText)
+		local indicatorX = localBoxX + self.boxWidth - self.padding - buttonWidth
+		local indicatorY = localBoxY + self.boxHeight - self.padding - 12
+		gfx.setImageDrawMode(self.invert and gfx.kDrawModeFillWhite or gfx.kDrawModeCopy)
+		gfx.drawText(buttonText, indicatorX, indicatorY)
+
+		-- Restore original font
+		gfx.setFont(currentFont)
 	end
 end
 
