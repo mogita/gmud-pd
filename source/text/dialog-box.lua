@@ -38,26 +38,42 @@ local FONT_PRESETS = {
 ---@field lineHeightFactor? number Line height multiplier (default: 1.3)
 ---@field charKerning? number Character spacing (default: 0)
 
----@class DialogBox
+---@class DialogBox : playdate.graphics.sprite
 ---@field dialogs DialogEntry[]
 ---@field speed number
 ---@field invert boolean
 ---@field onComplete function
----@field visible boolean
 ---@field currentDialogIndex number
 ---@field currentPageIndex number
 ---@field pages string[]
 ---@field displayedCharCount number
 ---@field isAnimating boolean
+---@field font any
+---@field nameFont any
+---@field marginX number
+---@field marginY number
+---@field boxHeight number
+---@field padding number
+---@field nameTagPadding number
+---@field nameTagOverlap number
+---@field cornerRadius number
+---@field lineHeightFactor number
+---@field charKerning number
+---@field boxWidth number
+---@field boxX number
+---@field boxY number
+---@field textWidth number
+---@field textHeight number
+---@field lastCharTime number
 ---@field new fun(config: DialogBoxConfig): DialogBox
 ---@field show fun(self: DialogBox)
 ---@field hide fun(self: DialogBox)
 ---@field next fun(self: DialogBox)
 ---@field update fun(self: DialogBox)
----@field draw fun(self: DialogBox)
----@field isVisible fun(self: DialogBox): boolean
+---@field draw fun(self: DialogBox, x: number, y: number, width: number, height: number)
 ---@field isTextAnimating fun(self: DialogBox): boolean
 ---@field getCurrentInfo fun(self: DialogBox): table
+---@field _prepareCurrentDialog fun(self: DialogBox)
 
 DialogBox = {}
 DialogBox.__index = DialogBox
@@ -182,7 +198,9 @@ end
 ---@param config DialogBoxConfig Configuration for the dialog box
 ---@return DialogBox
 function DialogBox.new(config)
-	-- Create sprite instance
+	-- Create sprite instance and cast to DialogBox type
+	---@type DialogBox
+	---@diagnostic disable-next-line: assign-type-mismatch
 	local self = gfx.sprite.new()
 	setmetatable(self, DialogBox)
 
@@ -352,7 +370,9 @@ function DialogBox:update()
 end
 
 -- Draw the dialog box (sprite draw callback)
--- x, y, width, height are the dirty rect being updated (in sprite-local coordinates)
+-- Note: Sprite draw callbacks receive (x, y, width, height) dirty rect parameters
+-- but we don't use them since we always draw the full dialog box
+---@diagnostic disable-next-line: unused-local
 function DialogBox:draw(x, y, width, height)
 	local dialog = self.dialogs[self.currentDialogIndex]
 	if not dialog then
