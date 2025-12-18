@@ -14,7 +14,6 @@ local camera
 local player
 local map
 local dialog
-local lastCameraOffset = 0 -- Track camera position to detect changes
 
 -- Initialize game
 function initialize()
@@ -23,23 +22,34 @@ function initialize()
 
 	-- Create camera with 100px scroll trigger offset
 	camera = Camera.new({
-		mapWidth = 1200, -- Map is 3x screen width
+		mapWidth = 758, -- Map width from image (758px)
 		scrollTriggerOffset = 100,
 	})
 
-	-- Create map with repeating pattern background
+	-- Create map with image background
 	map = Map.new({
-		width = 1200,
+		imagePath = "images/maps/1", -- Load map image (758x80px)
 		camera = camera,
 	})
+
+	-- Set up background drawing callback for the sprite system
+	-- This ensures the map is drawn as part of the sprite update cycle
+	gfx.sprite.setBackgroundDrawingCallback(function(x, y, width, height)
+		-- Clear the background area with white
+		gfx.setColor(gfx.kColorWhite)
+		gfx.fillRect(x, y, width, height)
+
+		-- Draw the map (it will handle its own positioning based on camera)
+		map:draw()
+	end)
 
 	-- Create player character (xiaoshutong)
 	player = Player.new({
 		imagePath = "images/xiao-shu-tong.png",
 		startX = 50, -- Start at left side of map
-		startY = 120, -- Bottom of upper half
+		startY = 120, -- Bottom of upper half (player's horizontal line)
 		moveSpeed = 2,
-		mapWidth = 1200,
+		mapWidth = 758, -- Match map width
 		camera = camera,
 	})
 	player:add()
@@ -66,23 +76,27 @@ end
 -- Initialize the game
 initialize()
 
+-- Track camera offset to trigger background redraw when camera moves
+local lastCameraOffset = 0
+
 ---@diagnostic disable-next-line: duplicate-set-field
 function playdate.update()
-	-- Only redraw map when camera position changes (reduces flicker)
-	local currentCameraOffset = camera:getOffset()
-	if currentCameraOffset ~= lastCameraOffset then
-		map:draw()
-		lastCameraOffset = currentCameraOffset
-	end
-
 	-- Disable player movement when dialog is visible
 	player:setCanMove(not dialog:isVisible())
 
 	-- Update player movement
 	player:update()
 
-	-- Update sprites (includes player and dialog box)
-	-- This only redraws dirty rects, not the entire screen!
+	-- Check if camera moved - if so, mark background as dirty
+	local currentCameraOffset = camera:getOffset()
+	if currentCameraOffset ~= lastCameraOffset then
+		-- Redraw the background when camera moves
+		gfx.sprite.redrawBackground()
+		lastCameraOffset = currentCameraOffset
+	end
+
+	-- Update sprites (includes player, dialog box, and background)
+	-- The background drawing callback will be called automatically
 	gfx.sprite.update()
 
 	-- Handle dialog input

@@ -1,7 +1,7 @@
 -- Map/World system
 -- Handles map rendering with repeating pattern background
 
-import "CoreLibs/graphics"
+import("CoreLibs/graphics")
 
 local gfx <const> = playdate.graphics
 
@@ -10,25 +10,41 @@ local _ = import("camera")
 
 ---@class Map
 ---@field width number Total width of the map in pixels
----@field height number Height of the map area (upper half = 120px)
+---@field height number Height of the map image
 ---@field camera Camera Reference to the camera
----@field patternImage playdate.graphics.image Repeating pattern for background
+---@field mapImage playdate.graphics.image? Map background image (optional)
+---@field patternImage playdate.graphics.image? Repeating pattern for background (fallback)
 local Map = {}
 Map.__index = Map
 
 ---Create a new map
----@param config {width: number, camera: Camera}
+---@param config {width: number?, camera: Camera, imagePath: string?}
 ---@return Map
 function Map.new(config)
 	local self = setmetatable({}, Map)
-	
-	self.width = config.width or 800
-	self.height = 120  -- Upper half of screen
+
 	self.camera = config.camera
-	
-	-- Create a simple repeating pattern (8x8 checkerboard)
-	self.patternImage = self:createPattern()
-	
+
+	-- Load map image if provided
+	if config.imagePath then
+		self.mapImage = gfx.image.new(config.imagePath)
+		if self.mapImage then
+			local imgWidth, imgHeight = self.mapImage:getSize()
+			self.width = imgWidth
+			self.height = imgHeight
+		else
+			-- Fallback to pattern if image fails to load
+			self.width = config.width or 800
+			self.height = 120
+			self.patternImage = self:createPattern()
+		end
+	else
+		-- Fallback to pattern-based map
+		self.width = config.width or 800
+		self.height = 120 -- Upper half of screen
+		self.patternImage = self:createPattern()
+	end
+
 	return self
 end
 
@@ -37,63 +53,76 @@ end
 function Map:createPattern()
 	local patternSize = 16
 	local pattern = gfx.image.new(patternSize, patternSize)
-	
+
 	gfx.pushContext(pattern)
-		-- Draw a simple grid pattern
-		gfx.setColor(gfx.kColorWhite)
-		gfx.fillRect(0, 0, patternSize, patternSize)
-		
-		gfx.setColor(gfx.kColorBlack)
-		-- Draw grid lines
-		gfx.drawLine(0, 0, patternSize, 0)  -- Top
-		gfx.drawLine(0, 0, 0, patternSize)  -- Left
-		
-		-- Draw a small dot in the center
-		gfx.fillRect(patternSize/2 - 1, patternSize/2 - 1, 2, 2)
+	-- Draw a simple grid pattern
+	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(0, 0, patternSize, patternSize)
+
+	gfx.setColor(gfx.kColorBlack)
+	-- Draw grid lines
+	gfx.drawLine(0, 0, patternSize, 0) -- Top
+	gfx.drawLine(0, 0, 0, patternSize) -- Left
+
+	-- Draw a small dot in the center
+	gfx.fillRect(patternSize / 2 - 1, patternSize / 2 - 1, 2, 2)
 	gfx.popContext()
-	
+
 	return pattern
 end
 
 ---Draw the map background
 function Map:draw()
-	local offsetX = self.camera:getOffset()
-	
-	-- Calculate which pattern tiles to draw
-	local patternWidth = self.patternImage:getSize()
-	local startTile = math.floor(offsetX / patternWidth)
-	local endTile = math.ceil((offsetX + 400) / patternWidth)
-	
-	-- Draw repeating pattern
-	for i = startTile, endTile do
-		local worldX = i * patternWidth
-		local screenX = self.camera:worldToScreen(worldX)
-		
+	if self.mapImage then
+		-- Draw map image
+		-- Position: bottom of image aligns with y=120 (player's horizontal line)
+		local screenX = self.camera:worldToScreen(0)
+		local screenY = 120 - self.height
+
 		-- Only draw if visible on screen
-		if screenX < 400 and screenX + patternWidth > 0 then
-			self.patternImage:draw(screenX, 0)
+		if screenX < 400 and screenX + self.width > 0 then
+			self.mapImage:draw(screenX, screenY)
 		end
+	else
+		-- Draw repeating pattern (fallback)
+		local offsetX = self.camera:getOffset()
+
+		-- Calculate which pattern tiles to draw
+		local patternWidth = self.patternImage:getSize()
+		local startTile = math.floor(offsetX / patternWidth)
+		local endTile = math.ceil((offsetX + 400) / patternWidth)
+
+		-- Draw repeating pattern
+		for i = startTile, endTile do
+			local worldX = i * patternWidth
+			local screenX = self.camera:worldToScreen(worldX)
+
+			-- Only draw if visible on screen
+			if screenX < 400 and screenX + patternWidth > 0 then
+				self.patternImage:draw(screenX, 0)
+			end
+		end
+
+		-- Draw map boundaries (visual indicators)
+		local leftBoundaryScreenX = self.camera:worldToScreen(0)
+		local rightBoundaryScreenX = self.camera:worldToScreen(self.width)
+
+		gfx.setColor(gfx.kColorBlack)
+
+		-- Left boundary
+		if leftBoundaryScreenX >= 0 and leftBoundaryScreenX < 400 then
+			gfx.setLineWidth(3)
+			gfx.drawLine(leftBoundaryScreenX, 0, leftBoundaryScreenX, 120)
+		end
+
+		-- Right boundary
+		if rightBoundaryScreenX >= 0 and rightBoundaryScreenX < 400 then
+			gfx.setLineWidth(3)
+			gfx.drawLine(rightBoundaryScreenX, 0, rightBoundaryScreenX, 120)
+		end
+
+		gfx.setLineWidth(1) -- Reset line width
 	end
-	
-	-- Draw map boundaries (visual indicators)
-	local leftBoundaryScreenX = self.camera:worldToScreen(0)
-	local rightBoundaryScreenX = self.camera:worldToScreen(self.width)
-	
-	gfx.setColor(gfx.kColorBlack)
-	
-	-- Left boundary
-	if leftBoundaryScreenX >= 0 and leftBoundaryScreenX < 400 then
-		gfx.setLineWidth(3)
-		gfx.drawLine(leftBoundaryScreenX, 0, leftBoundaryScreenX, self.height)
-	end
-	
-	-- Right boundary
-	if rightBoundaryScreenX >= 0 and rightBoundaryScreenX < 400 then
-		gfx.setLineWidth(3)
-		gfx.drawLine(rightBoundaryScreenX, 0, rightBoundaryScreenX, self.height)
-	end
-	
-	gfx.setLineWidth(1)  -- Reset line width
 end
 
 ---Get the map width
@@ -109,4 +138,3 @@ function Map:setWidth(width)
 end
 
 return Map
-
