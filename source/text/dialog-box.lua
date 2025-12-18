@@ -85,13 +85,13 @@ setmetatable(DialogBox, {
 
 -- Default configuration
 local DEFAULT_CONFIG = {
-	marginX = 10,
-	marginY = 10,
+	marginX = 5,
+	marginY = 5,
 	boxHeight = 90,
 	padding = 10,
 	nameTagPadding = 6,
 	nameTagOverlap = 8,
-	cornerRadius = 8,
+	cornerRadius = 0,
 	lineHeightFactor = 1.3,
 	charKerning = 0,
 }
