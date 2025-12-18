@@ -6,9 +6,14 @@ local gfx <const> = playdate.graphics
 
 -- Create character sprite
 local characterSprite = gfx.sprite.new()
-characterSprite:setImage(gfx.image.new("images/xiao-shu-tong.png"))
-characterSprite:moveTo(180, 100)
-characterSprite:add()
+local characterImage = gfx.image.new("images/xiao-shu-tong.png")
+if characterImage then
+	characterSprite:setImage(characterImage)
+	characterSprite:moveTo(180, 100)
+	characterSprite:add()
+else
+	print("Warning: Failed to load character image")
+end
 
 -- Create dialog box sprite
 local dialog = DialogBox.new({
@@ -33,6 +38,7 @@ dialog:add()
 -- Clear screen once at startup
 gfx.clear()
 
+---@diagnostic disable-next-line: duplicate-set-field
 function playdate.update()
 	-- Update sprites (includes character and dialog box)
 	-- This only redraws dirty rects, not the entire screen!
