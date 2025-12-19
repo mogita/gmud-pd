@@ -10,7 +10,7 @@ description: Playdate SDK 3.0.2 documentation reference---
 
 Always reference the official Playdate SDK documentation when working with Playdate development.
 
-- Official Documentation URL: https://sdk.play.date/3.0.2/Inside%20Playdate.html
+- Official Documentation: `docs/playdate/Inside Playdate.html`
 - SDK Version: 3.0.2
 - Primary Language: Lua (with C API available)
 
