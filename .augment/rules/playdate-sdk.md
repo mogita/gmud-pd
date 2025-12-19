@@ -21,3 +21,4 @@ Always reference the official Playdate SDK documentation when working with Playd
 - Use `import` instead of `require` for loading Lua files
 - Main entry point must be `main.lua`
 - Follow the geometry API conventions in `playdate.geometry`
+- Always build the output to `builds` directory, always use `gmud-pd.pdx` as the bulit package name
