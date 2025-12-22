@@ -4,13 +4,17 @@
 PRODUCT = gmud-pd.pdx
 SOURCE_DIR = source
 BUILD_DIR = builds
+MAIN_FILE = $(SOURCE_DIR)/main.lua
 OUTPUT = $(BUILD_DIR)/$(PRODUCT)
 
 # Detect Playdate SDK path
 PLAYDATE_SDK_PATH ?= $(shell egrep '^\s*SDKRoot' ~/.Playdate/config | head -n 1 | cut -c9-)
 
 # Playdate compiler
-PDC = $(PLAYDATE_SDK_PATH)/bin/pdc
+PDC = "$(PLAYDATE_SDK_PATH)/bin/pdc"
+
+# Playdate Simulator (macOS)
+SIMULATOR = "$(PLAYDATE_SDK_PATH)/bin/Playdate Simulator.app"
 
 # Detect OS for simulator launch
 OS := $(shell uname)
@@ -22,17 +26,16 @@ all: build
 # Build the game
 .PHONY: build
 build:
-	@echo "Building $(PRODUCT)..."
+	@echo "Compiling..."
 	@mkdir -p $(BUILD_DIR)
-	$(PDC) $(SOURCE_DIR) $(OUTPUT)
-	@echo "Build complete: $(OUTPUT)"
+	$(PDC) --main -sdkpath "$(PLAYDATE_SDK_PATH)" "$(MAIN_FILE)" "$(OUTPUT)"
 
 # Build and run the game
 .PHONY: run
 run: build
-	@echo "Running $(PRODUCT)..."
+	@echo "Starting Playdate Simulator..."
 ifeq ($(OS), Darwin)
-	@open $(OUTPUT)
+	@/usr/bin/open -a $(SIMULATOR) "$(OUTPUT)"
 else ifeq ($(OS), Linux)
 	@$(PLAYDATE_SDK_PATH)/bin/PlaydateSimulator $(OUTPUT)
 else
