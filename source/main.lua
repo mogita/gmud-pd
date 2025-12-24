@@ -75,7 +75,7 @@ function initialize()
 	-- Create player character (xiaoshutong)
 	player = Player.new({
 		imagePath = "images/xiao-shu-tong.png",
-		startX = 50, -- Start at left side of map
+		startX = 20, -- Start at left side of map
 		startY = PLAYER_Y, -- Player center Y position (224, with bottom at 240)
 		moveSpeed = 2,
 		mapWidth = map:getWidth(), -- Use scaled map width

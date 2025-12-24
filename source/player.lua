@@ -16,6 +16,7 @@ local _ = import("camera")
 ---@field mapWidth number Width of the current map (for boundary checking)
 ---@field camera Camera Reference to the camera
 ---@field canMove boolean Whether the player can move (disabled during dialogs)
+---@field halfWidth number Half of the sprite's width (for boundary checking)
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = gfx.sprite })
@@ -40,6 +41,11 @@ function Player.new(config)
 	-- Set anchor to bottom-center (0.5, 1.0)
 	-- This means the sprite's bottom-center point is at worldY
 	self:setCenter(0.5, 1.0)
+
+	-- Store sprite dimensions for boundary checking
+	-- Since anchor is at center (0.5), we need half-width for boundaries
+	local width, _ = image:getSize()
+	self.halfWidth = width / 2
 
 	-- World position (absolute coordinates in the map)
 	self.worldX = config.startX or 50
@@ -85,10 +91,16 @@ function Player:update()
 	end
 
 	-- Clamp player position to map boundaries
-	if self.worldX < 0 then
-		self.worldX = 0
-	elseif self.worldX > self.mapWidth then
-		self.worldX = self.mapWidth
+	-- Since anchor is at center (0.5), worldX represents the sprite's center
+	-- Left edge: worldX - halfWidth should be >= 0
+	-- Right edge: worldX + halfWidth should be <= mapWidth
+	local minX = self.halfWidth
+	local maxX = self.mapWidth - self.halfWidth
+
+	if self.worldX < minX then
+		self.worldX = minX
+	elseif self.worldX > maxX then
+		self.worldX = maxX
 	end
 
 	-- Update camera based on player position
