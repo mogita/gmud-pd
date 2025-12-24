@@ -73,13 +73,15 @@ function initialize()
 	end)
 
 	-- Create player character (xiaoshutong)
+	-- Uses spritesheet: gmud-player-1-table-32-32.png (4 frames of 32x32)
 	player = Player.new({
-		imagePath = "images/xiao-shu-tong.png",
+		imagePath = "images/characters/gmud-player-1",
 		startX = 20, -- Start at left side of map
 		startY = PLAYER_Y, -- Player center Y position (224, with bottom at 240)
 		moveSpeed = 2,
 		mapWidth = map:getWidth(), -- Use scaled map width
 		camera = camera,
+		animSpeedRatio = 9, -- Animation speed: higher = slower (1 = every frame, 3 = every 3 frames, etc.)
 	})
 	player:add()
 
