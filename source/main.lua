@@ -8,6 +8,7 @@ local gfx <const> = playdate.graphics
 local Camera = import("camera")
 local Player = import("player")
 local Map = import("map")
+local POIManager = import("poi-manager")
 
 -- Game configuration
 local MAP_SCALE <const> = 2.0 -- Scale factor for the map (1.0 = original size, 2.0 = double size)
@@ -37,6 +38,7 @@ local camera
 local player
 local map
 local dialog
+local poiManager
 
 -- Initialize game
 function initialize()
@@ -70,6 +72,11 @@ function initialize()
 
 		-- Draw the map (it will handle its own positioning based on camera)
 		map:draw()
+
+		-- Draw POI debug visualization (if enabled)
+		if poiManager then
+			poiManager:drawDebug(camera)
+		end
 	end)
 
 	-- Create player character (xiaoshutong)
@@ -100,6 +107,19 @@ function initialize()
 	})
 	dialog:add()
 
+	-- Create POI manager
+	poiManager = POIManager.new()
+
+	-- Register named action handlers here if needed:
+	-- poiManager:registerAction("handlerName", function(player, poi, manager) ... end)
+
+	-- Load POIs for the initial map
+	poiManager:loadForMap("map1")
+
+	-- Debug: visualize POI positions (disable for production)
+	poiManager:setDebugDrawParams(MAP_BOTTOM_Y, 3)
+	poiManager:setDebugMode(true)
+
 	-- Clear screen once at startup
 	gfx.clear()
 end
@@ -117,6 +137,19 @@ function playdate.update()
 
 	-- Update player movement
 	player:update()
+
+	-- Update POI manager with player position
+	local playerX, _ = player:getWorldPosition()
+	poiManager:updatePlayerPosition(playerX, player.halfWidth * 2)
+
+	-- Check for POI interactions (Up/Down button presses)
+	if not dialog:isVisible() then
+		if playdate.buttonJustPressed(playdate.kButtonUp) then
+			poiManager:tryTrigger(player, "up")
+		elseif playdate.buttonJustPressed(playdate.kButtonDown) then
+			poiManager:tryTrigger(player, "down")
+		end
+	end
 
 	-- Check if camera moved - if so, mark background as dirty
 	local currentCameraOffset = camera:getOffset()
