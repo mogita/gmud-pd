@@ -2,10 +2,6 @@
 type: "always_apply"
 ---
 
----
-type: "always_apply"
-description: Playdate SDK 3.0.2 documentation reference---
-
 # Playdate SDK Documentation
 
 Always reference the official Playdate SDK documentation when working with Playdate development.

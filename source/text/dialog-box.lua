@@ -268,6 +268,29 @@ function DialogBox:hide()
 	self:setVisible(false)
 end
 
+-- Show a simple message without a speaker name (for system messages)
+---@param text string The message to display
+---@param onComplete? function Optional callback when message is dismissed
+function DialogBox:showMessage(text, onComplete)
+	-- Temporarily replace dialogs with a single speakerless message
+	self.dialogs = {
+		{
+			speaker = nil, -- No speaker name tag
+			text = text,
+		},
+	}
+
+	-- Store the completion callback
+	if onComplete then
+		self.onComplete = onComplete
+	else
+		self.onComplete = function() end
+	end
+
+	-- Show the dialog
+	self:show()
+end
+
 -- Check if dialog box is visible (override to use sprite's isVisible)
 -- Note: We don't need to override this - just use the sprite's built-in isVisible() method
 

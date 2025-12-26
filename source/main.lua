@@ -92,26 +92,21 @@ function initialize()
 	})
 	player:add()
 
-	-- Create dialog box sprite
-	dialog = DialogBox.new({
-		dialogs = {
-			{
-				speaker = "小书童",
-				text = "顾炎武今日不在武馆，请给我糖葫芦，我会将毛笔给你。若想要切磋，请与旁边的何铁手交谈。若无其他要事，我就去忙了。",
-			},
-			{
-				speaker = "顾炎武的大毛猫咪",
-				text = "原来如此，多谢告知。",
-			},
-		},
-	})
+	-- Create dialog box sprite (starts empty, used by POI interactions)
+	dialog = DialogBox.new({ dialogs = {} })
 	dialog:add()
 
 	-- Create POI manager
 	poiManager = POIManager.new()
 
-	-- Register named action handlers here if needed:
-	-- poiManager:registerAction("handlerName", function(player, poi, manager) ... end)
+	-- Set up POI context with game systems
+	poiManager:setContext({
+		-- Show a system message (no speaker name) using the dialog box
+		showMessage = function(text)
+			dialog:showMessage(text)
+		end,
+		-- Future: add more context like dialogSystem, shopUI, combatSystem, etc.
+	})
 
 	-- Load POIs for the initial map
 	poiManager:loadForMap("map1")
