@@ -1,61 +1,20 @@
-// Build tasks - documentation can be found at: https://code.visualstudio.com/docs/editor/tasks
 {
     "version": "2.0.0",
     "tasks": [
         {
-            // Build the game using make
             "label": "Playdate: Build",
-            "type": "shell",
+            "type": "process",
             "command": "make",
-            "args": ["build"],
-            // Look for build problems that match a specific format and output it to the "problems" window
-            "problemMatcher": ["$pdc-lua", "$pdc-external"],
-            "presentation": {
-                // Switch to problems tab on error
-                "revealProblems": "onProblem",
-                // Share same terminal window as other tasks
-                "panel": "shared",
-                // Don't show "Terminal will be reused by tasks, press any key to close it" message
-                "showReuseMessage": false
-            },
-            // Set as our default build task under Terminal->Run Build Task, or with ctrl/cmd+shift+B
+            "args": ["build"]
+        },
+        {
+            "label": "Playdate: Run",
+            "type": "process",
+            "command": "make",
+            "args": ["run"],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
-        },
-        {
-            // Build and run the game using make
-            "label": "Playdate: Run",
-            "type": "shell",
-            "command": "make",
-            "args": ["run"],
-            // Look for build problems that match a specific format and output it to the "problems" window
-            "problemMatcher": ["$pdc-lua", "$pdc-external"],
-            "presentation": {
-                // Switch to problems tab on error
-                "revealProblems": "onProblem",
-                // Share same terminal window as other tasks
-                "panel": "shared",
-                // Don't show "Terminal will be reused by tasks, press any key to close it" message
-                "showReuseMessage": false
-            }
-        },
-        {
-            // Build for debugging using make
-            "label": "Playdate: Debug Build",
-            "type": "shell",
-            "command": "make",
-            "args": ["debug"],
-            // Look for build problems that match a specific format and output it to the "problems" window
-            "problemMatcher": ["$pdc-lua", "$pdc-external"],
-            "presentation": {
-                // Switch to problems tab on error
-                "revealProblems": "onProblem",
-                // Share same terminal window as other tasks
-                "panel": "shared",
-                // Don't show "Terminal will be reused by tasks, press any key to close it" message
-                "showReuseMessage": false
             }
         }
     ]
