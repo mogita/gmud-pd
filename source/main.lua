@@ -139,20 +139,33 @@ function playdate.update()
 
 	-- Check for POI interactions
 	if not dialog:isVisible() then
-		-- A button: interactive objects and NPCs
-		if playdate.buttonJustPressed(playdate.kButtonA) then
+		-- A button: interactive objects and NPCs (only when facing up)
+		if playdate.buttonJustPressed(playdate.kButtonA) and player:isFacingUp() then
 			poiManager:tryTrigger(player, "A")
-		-- UP button: passages (doors, paths)
+		-- UP button: passages (enter buildings/maps)
 		elseif playdate.buttonJustPressed(playdate.kButtonUp) then
 			poiManager:tryTrigger(player, "up")
-		-- DOWN button: exits
+		-- DOWN button: passages (exit buildings/maps)
 		elseif playdate.buttonJustPressed(playdate.kButtonDown) then
 			poiManager:tryTrigger(player, "down")
 		end
 	else
-		-- Dialog is visible, A advances it
-		if playdate.buttonJustPressed(playdate.kButtonA) then
-			dialog:next()
+		-- Dialog is visible
+		if dialog:isOnLastPage() then
+			-- Last page: A, B, Left, or Right dismisses
+			if
+				playdate.buttonJustPressed(playdate.kButtonA)
+				or playdate.buttonJustPressed(playdate.kButtonB)
+				or playdate.buttonJustPressed(playdate.kButtonLeft)
+				or playdate.buttonJustPressed(playdate.kButtonRight)
+			then
+				dialog:next() -- This will hide the dialog
+			end
+		else
+			-- Not on last page: only A advances
+			if playdate.buttonJustPressed(playdate.kButtonA) then
+				dialog:next()
+			end
 		end
 	end
 

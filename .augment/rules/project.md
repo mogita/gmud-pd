@@ -25,9 +25,9 @@ To add a new interactive POI:
    ```
 
 2. **Add handler** in `source/poi/handlers/`:
-   - `interactive.lua` - objects (wells, beds, items)
-   - `npc.lua` - NPCs with menus
-   - `passage.lua` - doors, paths, exits
+   - `interactive.lua` - objects (wells, beds, items) - **requires player facing UP**
+   - `npc.lua` - NPCs with menus - **requires player facing UP**
+   - `passage.lua` - doors, paths, exits - **no facing requirement**
 
 3. **Register handler** inside the setup function:
    ```lua
@@ -38,3 +38,17 @@ To add a new interactive POI:
    ```
 
 4. **Reference original gmud** for authentic messages - search `talk.s`, `string*.s` for Chinese text.
+
+## POI Interaction Rules
+
+- **Interactive POIs** (wells, items): Press **A** when facing UP
+- **NPCs**: Press **A** when facing UP
+- **Passages**: Press **UP** to enter buildings/maps, **DOWN** to exit (no facing requirement)
+
+---
+
+# Dialog/Message Display Guidelines
+
+- Show A button icon
+- Only A advances to next page
+- On last page (including one page only): no A button icon, dismissible with A, B, Left, or Right (Left/Right starts walking immediately)

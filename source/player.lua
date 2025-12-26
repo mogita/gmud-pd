@@ -251,4 +251,10 @@ function Player:setCanMove(enabled)
 	self.canMove = enabled
 end
 
+---Check if player is facing up (away from camera)
+---@return boolean
+function Player:isFacingUp()
+	return self.currentFrame == FRAME_BACK
+end
+
 return Player

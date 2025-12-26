@@ -299,6 +299,18 @@ function DialogBox:isTextAnimating()
 	return self.isAnimating
 end
 
+-- Check if currently on the last page of the last dialog
+function DialogBox:isOnLastPage()
+	if not self:isVisible() then
+		return false
+	end
+
+	local isLastDialog = self.currentDialogIndex >= #self.dialogs
+	local isLastPage = self.currentPageIndex >= #self.pages
+
+	return isLastDialog and isLastPage and not self.isAnimating
+end
+
 -- Prepare pages for current dialog entry
 function DialogBox:_prepareCurrentDialog()
 	if self.currentDialogIndex > #self.dialogs then
