@@ -14,24 +14,23 @@ local POIManager = import("poi-manager")
 local MAP_SCALE <const> = 2.0 -- Scale factor for the map (1.0 = original size, 2.0 = double size)
 
 -- Layout constants (screen height = 240px)
--- Stack containers vertically like CSS flexbox with flex-direction: column
-local MAP_AREA_HEIGHT <const> = 108 -- Map container height
-local PLAYER_AREA_HEIGHT <const> = 32 -- Player container height
-local DIALOG_AREA_HEIGHT <const> = 100 -- Dialog container height (70px box + 10px margins + ~20px name tag)
+-- Screen is split into two areas: Map (160px) and Dialog (80px)
+-- Player sprite overlays on the map area
+local MAP_AREA_HEIGHT <const> = 160 -- Map container height (80px image × 2 scale)
+local DIALOG_AREA_HEIGHT <const> = 80 -- Dialog container height (240 - 160 = 80px)
 
--- Container boundaries (stacked vertically)
+-- Container boundaries
 local MAP_TOP <const> = 0
-local MAP_BOTTOM <const> = MAP_TOP + MAP_AREA_HEIGHT -- y=98
+local MAP_BOTTOM <const> = MAP_TOP + MAP_AREA_HEIGHT -- y=160
 
-local PLAYER_TOP <const> = MAP_BOTTOM -- y=98
-local PLAYER_BOTTOM <const> = PLAYER_TOP + PLAYER_AREA_HEIGHT -- y=130
-
-local DIALOG_TOP <const> = PLAYER_BOTTOM -- y=130
+local DIALOG_TOP <const> = MAP_BOTTOM -- y=160
 local DIALOG_BOTTOM <const> = DIALOG_TOP + DIALOG_AREA_HEIGHT -- y=240
 
 -- Y positions for elements
-local MAP_BOTTOM_Y <const> = MAP_BOTTOM -- Map image bottom aligns at y=98
-local PLAYER_Y <const> = PLAYER_BOTTOM -- Player sprite bottom at y=130 (with bottom-center anchor)
+local MAP_BOTTOM_Y <const> = MAP_BOTTOM -- Map image bottom aligns at y=160
+-- Player sprite overlays on map, with bottom at y=140 (108 + 32 = 140)
+-- This places the 32px tall player sprite at y=108 to y=140 on screen
+local PLAYER_Y <const> = 140 -- Player sprite bottom (with bottom-center anchor)
 
 -- Game state
 local camera
@@ -50,7 +49,7 @@ function initialize()
 		imagePath = "images/maps/1", -- Load map image (758x80px native)
 		camera = nil, -- Will be set after camera is created
 		scale = MAP_SCALE,
-		bottomY = MAP_BOTTOM_Y, -- Map bottom aligns with player top (y=208)
+		bottomY = MAP_BOTTOM_Y, -- Map bottom aligns at y=160
 	})
 
 	-- Create camera with 100px scroll trigger offset
@@ -79,12 +78,12 @@ function initialize()
 		end
 	end)
 
-	-- Create player character (xiaoshutong)
+	-- Create player character
 	-- Uses spritesheet: gmud-player-1-table-32-32.png (4 frames of 32x32)
 	player = Player.new({
 		imagePath = "images/characters/gmud-player-1",
 		startX = 20, -- Start at left side of map
-		startY = PLAYER_Y, -- Player center Y position (224, with bottom at 240)
+		startY = PLAYER_Y, -- Player bottom Y position (140, overlay on map)
 		moveSpeed = 2,
 		mapWidth = map:getWidth(), -- Use scaled map width
 		camera = camera,

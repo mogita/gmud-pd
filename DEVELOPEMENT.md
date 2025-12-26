@@ -1,7 +1,4 @@
-Recommended way to build and run:
-
-- Install VSCode and Playdate Debug extension
-- Click the "play" button to run
+Recommended way to build and run is by pressing `F5` key in VSCode.
 
 Or, using `Makefile` to build and run:
 
