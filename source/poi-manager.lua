@@ -3,12 +3,14 @@
 
 local gfx <const> = playdate.graphics
 local POI = import("poi")
+local handlers = import("poi/handlers/init")
 
 ---@class POIManager
 ---@field pois POI[] List of POIs for current map
----@field actionHandlers table<string, function> Registry of named action handlers
+---@field handlerRegistry HandlerRegistry Handler registry for POI actions
 ---@field currentPOI POI|nil The POI the player is currently in (for enter/exit hooks)
 ---@field mapId string|nil Current map identifier
+---@field context table Shared context for handlers
 ---@field debugMode boolean Whether to draw debug visualization
 ---@field debugLineHeight number Height of debug lines in pixels
 ---@field debugMapBottomY number Y position of map bottom for debug drawing
@@ -21,14 +23,21 @@ function POIManager.new()
 	local self = setmetatable({}, POIManager)
 
 	self.pois = {}
-	self.actionHandlers = {}
+	self.handlerRegistry = handlers.registry
 	self.currentPOI = nil
 	self.mapId = nil
+	self.context = {} -- Will be populated with game systems (dialog, shop, etc.)
 	self.debugMode = false
 	self.debugLineHeight = 3
-	self.debugMapBottomY = 108 -- Default, should be set via setDebugDrawParams
+	self.debugMapBottomY = 108
 
 	return self
+end
+
+---Set context for handlers (game systems like dialog, shop, combat)
+---@param context table Table of game systems
+function POIManager:setContext(context)
+	self.context = context
 end
 
 ---Enable or disable debug visualization
@@ -72,10 +81,10 @@ function POIManager:drawDebug(camera)
 end
 
 ---Register a named action handler
----@param name string The action name
----@param handler function The handler function(player, poi, poiManager)
-function POIManager:registerAction(name, handler)
-	self.actionHandlers[name] = handler
+---@param name string The handler name
+---@param handler function The handler function(player, poi, context)
+function POIManager:registerHandler(name, handler)
+	self.handlerRegistry:register(name, handler)
 end
 
 ---Load POIs for a specific map
@@ -144,37 +153,31 @@ function POIManager:updatePlayerPosition(playerX, playerWidth)
 end
 
 ---Execute the trigger for a specific POI
----@param player Player The player object
+---@param player table The player object
 ---@param poi POI The POI to trigger
 ---@return boolean success Whether the trigger was executed
 function POIManager:triggerPOI(player, poi)
-	-- Try inline onTrigger function first
-	if poi.onTrigger then
-		poi.onTrigger(player, poi, self)
-		return true
+	-- Use handler registry to execute the appropriate handler
+	local handled = self.handlerRegistry:handle(player, poi, self.context)
+
+	if not handled then
+		print("Warning: POI '" .. poi.id .. "' has no handler")
 	end
 
-	-- Try named action handler
-	if poi.actionName and self.actionHandlers[poi.actionName] then
-		self.actionHandlers[poi.actionName](player, poi, self)
-		return true
-	end
-
-	print("Warning: POI '" .. poi.id .. "' has no trigger handler")
-	return false
+	return handled
 end
 
 ---Try to trigger a POI interaction
----@param player Player The player object
----@param buttonAction string The button pressed: "up" or "down"
+---@param player table The player object
+---@param triggerKey string The trigger key: "A", "up", or "down"
 ---@return boolean triggered Whether a POI was triggered
-function POIManager:tryTrigger(player, buttonAction)
+function POIManager:tryTrigger(player, triggerKey)
 	if not self.currentPOI then
 		return false
 	end
 
-	-- Check if the POI's action matches the button pressed
-	if self.currentPOI.action ~= buttonAction then
+	-- Check if the POI responds to this trigger
+	if not self.currentPOI:respondsToTrigger(triggerKey) then
 		return false
 	end
 

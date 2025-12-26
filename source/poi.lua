@@ -1,43 +1,76 @@
 -- POI (Point of Interest) class
 -- Represents an interactive area on the map
 
+local Categories = import("poi/categories")
+
+-- Valid category values for validation
+local ValidCategories = {
+	[Categories.Category.INTERACTIVE] = true,
+	[Categories.Category.PASSAGE] = true,
+	[Categories.Category.NPC] = true,
+}
+
 ---@class POI
 ---@field id string Unique identifier
----@field type string Category: "well", "door", "npc", "passage", etc.
+---@field category string POI category: "interactive", "passage", "npc"
 ---@field x number World X position (left edge of trigger area)
 ---@field width number Width of trigger area
----@field action string Trigger key: "up" (interact) or "down" (exit)
----@field onTrigger function|nil Custom callback when triggered (optional if using named action)
----@field actionName string|nil Named action handler to use (optional if using onTrigger)
----@field data table|nil Optional metadata (dialog, destination, etc.)
+---@field trigger string Trigger key: "A", "up", or "down"
+---@field onTrigger function|nil Custom callback when triggered
+---@field handlerName string|nil Named handler to use
+---@field data table|nil Category-specific metadata
 local POI = {}
 POI.__index = POI
 
 ---Create a new POI
----@param config {id: string, type: string, x: number, width: number, action: string, onTrigger: function?, actionName: string?, data: table?}
+---@param config table POI configuration
 ---@return POI
 function POI.new(config)
 	local self = setmetatable({}, POI)
 
 	-- Required fields
 	assert(config.id, "POI requires an id")
-	assert(config.type, "POI requires a type")
 	assert(config.x, "POI requires an x position")
 	assert(config.width, "POI requires a width")
-	assert(config.action == "up" or config.action == "down", "POI action must be 'up' or 'down'")
+	assert(config.category, "POI '" .. config.id .. "' requires a category")
+
+	-- Validate category
+	if not ValidCategories[config.category] then
+		error(
+			"POI '"
+				.. config.id
+				.. "' has invalid category: '"
+				.. tostring(config.category)
+				.. "'. Must be one of: interactive, passage, npc"
+		)
+	end
 
 	self.id = config.id
-	self.type = config.type
 	self.x = config.x
 	self.width = config.width
-	self.action = config.action
+	self.category = config.category
 
-	-- Optional fields (at least one of onTrigger or actionName should be provided)
+	-- Trigger key (uses category default if not specified)
+	self.trigger = config.trigger
+	if not self.trigger then
+		self.trigger = Categories.getDefaultTrigger(self.category)
+	end
+
+	-- Handler configuration
 	self.onTrigger = config.onTrigger
-	self.actionName = config.actionName
+	self.handlerName = config.handlerName
+
+	-- Category-specific data
 	self.data = config.data or {}
 
 	return self
+end
+
+---Check if this POI responds to a given trigger
+---@param triggerKey string The trigger to check ("A", "up", "down")
+---@return boolean
+function POI:respondsToTrigger(triggerKey)
+	return self.trigger == triggerKey
 end
 
 ---Check if a world X position is within this POI's trigger area
@@ -67,4 +100,3 @@ function POI:getCenterX()
 end
 
 return POI
-

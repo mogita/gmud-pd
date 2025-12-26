@@ -1,33 +1,25 @@
 -- POI definitions for map1
--- Each POI entry defines an interactive area on the map
 --
--- Required fields:
---   id: string       - Unique identifier
---   type: string     - Category (e.g., "well", "door", "npc")
---   x: number        - World X position (left edge of trigger area)
---   width: number    - Width of trigger area in pixels
---   action: string   - "up" or "down" button to trigger
+-- Categories (required):
+--   "interactive" - Objects (well, sign, board) - trigger: A
+--   "passage"     - Transitions (door, path)    - trigger: up
+--   "npc"         - Characters with menus       - trigger: A
 --
--- Trigger (one required):
---   onTrigger: function(player, poi, poiManager) - Inline callback
---   actionName: string - Named handler registered in main.lua
---
--- Optional:
---   data: table - Custom metadata for the handler
+-- Fields:
+--   id: string          - Unique identifier (required)
+--   category: string    - POI category (required)
+--   x, width: number    - Trigger area in world coordinates (required)
+--   trigger: string     - "A", "up", or "down" (optional, uses category default)
+--   handlerName: string - Named handler (optional)
+--   data: table         - Category-specific data (optional)
 
 return {
-	-- Example: A well with inline trigger
+	-- Well
 	{
 		id = "well_1",
-		type = "well",
+		category = "interactive",
 		x = 116,
 		width = 25,
-		action = "up",
-		onTrigger = function(player, poi, poiManager)
-			print("Player interacted with the well!")
-		end,
-		data = {
-			description = "An old stone well",
-		},
+		handlerName = "drink_water",
 	},
 }

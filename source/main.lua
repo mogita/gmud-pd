@@ -142,33 +142,32 @@ function playdate.update()
 	local playerX, _ = player:getWorldPosition()
 	poiManager:updatePlayerPosition(playerX, player.halfWidth * 2)
 
-	-- Check for POI interactions (Up/Down button presses)
+	-- Check for POI interactions
 	if not dialog:isVisible() then
-		if playdate.buttonJustPressed(playdate.kButtonUp) then
+		-- A button: interactive objects and NPCs
+		if playdate.buttonJustPressed(playdate.kButtonA) then
+			poiManager:tryTrigger(player, "A")
+		-- UP button: passages (doors, paths)
+		elseif playdate.buttonJustPressed(playdate.kButtonUp) then
 			poiManager:tryTrigger(player, "up")
+		-- DOWN button: exits
 		elseif playdate.buttonJustPressed(playdate.kButtonDown) then
 			poiManager:tryTrigger(player, "down")
+		end
+	else
+		-- Dialog is visible, A advances it
+		if playdate.buttonJustPressed(playdate.kButtonA) then
+			dialog:next()
 		end
 	end
 
 	-- Check if camera moved - if so, mark background as dirty
 	local currentCameraOffset = camera:getOffset()
 	if currentCameraOffset ~= lastCameraOffset then
-		-- Redraw the background when camera moves
 		gfx.sprite.redrawBackground()
 		lastCameraOffset = currentCameraOffset
 	end
 
 	-- Update sprites (includes player, dialog box, and background)
-	-- The background drawing callback will be called automatically
 	gfx.sprite.update()
-
-	-- Handle dialog input
-	if playdate.buttonJustPressed(playdate.kButtonA) then
-		if dialog:isVisible() then
-			dialog:next()
-		else
-			dialog:show()
-		end
-	end
 end
