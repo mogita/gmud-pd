@@ -20,6 +20,11 @@ local FRAME_WALK_RIGHT <const> = 4 -- Walking facing right
 local DIR_LEFT <const> = 1
 local DIR_RIGHT <const> = 2
 
+-- Player state constants
+local STATE_IDLE <const> = "idle"
+local STATE_WALKING <const> = "walking"
+local STATE_AUTO_WALKING <const> = "auto_walking"
+
 ---@class Player : playdate.graphics.sprite
 ---@field worldX number Player's position in world coordinates
 ---@field worldY number Player's position in world coordinates (fixed for now)
@@ -37,7 +42,7 @@ local DIR_RIGHT <const> = 2
 ---@field wasMovingRight boolean Whether right was pressed in the previous frame
 ---@field ignoreUpUntilRelease boolean Ignore UP key until released (after map transition)
 ---@field ignoreDownUntilRelease boolean Ignore DOWN key until released (after map transition)
----@field autoWalkDirection number? Auto-walk direction (DIR_LEFT or DIR_RIGHT), nil if not auto-walking
+---@field state string Current player state (STATE_IDLE, STATE_WALKING, STATE_AUTO_WALKING)
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = gfx.sprite })
@@ -70,7 +75,9 @@ function Player.new(config)
 	self.wasMovingRight = false
 	self.ignoreUpUntilRelease = false -- Ignore UP key until released (used after map transition)
 	self.ignoreDownUntilRelease = false -- Ignore DOWN key until released (used after map transition)
-	self.autoWalkDirection = nil -- Auto-walk direction (DIR_LEFT or DIR_RIGHT), nil if not auto-walking
+
+	-- State machine
+	self.state = STATE_IDLE
 
 	-- Set initial image (standing facing right)
 	self:setImage(self.images:getImage(self.currentFrame))
@@ -160,132 +167,246 @@ function Player:toggleWalkFrame(justPressed)
 	return false
 end
 
----Handle player input and movement
+---Gather input from buttons
+---@return table input Input state table
+function Player:gatherInput()
+	return {
+		left = playdate.buttonIsPressed(playdate.kButtonLeft),
+		right = playdate.buttonIsPressed(playdate.kButtonRight),
+		up = playdate.buttonIsPressed(playdate.kButtonUp),
+		down = playdate.buttonIsPressed(playdate.kButtonDown),
+		b = playdate.buttonIsPressed(playdate.kButtonB),
+		a = playdate.buttonIsPressed(playdate.kButtonA),
+	}
+end
+
+---State handler for IDLE state
+local idleState = {
+	enter = function(self)
+		-- Set standing frame based on current facing
+		if self.currentFrame == FRAME_BACK or self.currentFrame == FRAME_FRONT then
+			-- Keep facing up/down frame
+		else
+			self.currentFrame = FRAME_STAND_RIGHT
+		end
+		self.animFrameCounter = 0
+	end,
+
+	update = function(self, input)
+		-- Priority 1: Up/Down changes facing
+		if input.up and not self.ignoreUpUntilRelease then
+			self.currentFrame = FRAME_BACK
+			self.animFrameCounter = 0
+			return STATE_IDLE -- Stay in idle
+		elseif input.down and not self.ignoreDownUntilRelease then
+			self.currentFrame = FRAME_FRONT
+			self.animFrameCounter = 0
+			return STATE_IDLE -- Stay in idle
+		end
+
+		-- Priority 2: B + Left/Right starts auto-walk
+		if input.b and input.left and not self.wasMovingLeft then
+			self.facing = DIR_LEFT
+			return STATE_AUTO_WALKING
+		elseif input.b and input.right and not self.wasMovingRight then
+			self.facing = DIR_RIGHT
+			return STATE_AUTO_WALKING
+		end
+
+		-- Priority 3: Left/Right starts manual walk
+		if input.left and not input.b then
+			self.facing = DIR_LEFT
+			return STATE_WALKING
+		elseif input.right and not input.b then
+			self.facing = DIR_RIGHT
+			return STATE_WALKING
+		end
+
+		-- Stay in idle
+		return STATE_IDLE
+	end,
+}
+
+---State handler for WALKING state
+local walkingState = {
+	enter = function(self)
+		self.currentFrame = FRAME_WALK_RIGHT
+		self.animFrameCounter = 0
+	end,
+
+	update = function(self, input)
+		-- Priority 1: Up/Down transitions to idle
+		if input.up and not self.ignoreUpUntilRelease then
+			self.currentFrame = FRAME_BACK
+			return STATE_IDLE
+		elseif input.down and not self.ignoreDownUntilRelease then
+			self.currentFrame = FRAME_FRONT
+			return STATE_IDLE
+		end
+
+		-- Priority 2: B pressed starts auto-walk
+		if input.b then
+			return STATE_AUTO_WALKING
+		end
+
+		-- Priority 3: Check if still moving in the same direction
+		local movingInDirection = (self.facing == DIR_LEFT and input.left) or (self.facing == DIR_RIGHT and input.right)
+		if not movingInDirection then
+			-- Direction released, go to idle
+			return STATE_IDLE
+		end
+
+		-- Continue walking
+		if self.facing == DIR_LEFT then
+			self.worldX -= self.moveSpeed
+		else
+			self.worldX += self.moveSpeed
+		end
+
+		-- Animate
+		local justPressed = (self.facing == DIR_LEFT and not self.wasMovingLeft)
+			or (self.facing == DIR_RIGHT and not self.wasMovingRight)
+		self:toggleWalkFrame(justPressed)
+
+		return STATE_WALKING
+	end,
+}
+
+---State handler for AUTO_WALKING state
+local autoWalkingState = {
+	enter = function(self)
+		self.currentFrame = FRAME_WALK_RIGHT
+		self.animFrameCounter = 0
+	end,
+
+	update = function(self, input)
+		-- Calculate boundaries
+		local minX = self.halfWidth
+		local maxX = self.mapWidth - self.halfWidth
+
+		-- Priority 1: Up/Down transitions to idle
+		if input.up and not self.ignoreUpUntilRelease then
+			self.currentFrame = FRAME_BACK
+			return STATE_IDLE
+		elseif input.down and not self.ignoreDownUntilRelease then
+			self.currentFrame = FRAME_FRONT
+			return STATE_IDLE
+		end
+
+		-- Priority 2: Left/Right without B transitions to manual walking
+		if input.left and not input.b then
+			self.facing = DIR_LEFT
+			return STATE_WALKING
+		elseif input.right and not input.b then
+			self.facing = DIR_RIGHT
+			return STATE_WALKING
+		end
+
+		-- Priority 3: B + opposite direction changes auto-walk direction
+		if input.b and input.left and self.facing == DIR_RIGHT then
+			self.facing = DIR_LEFT
+		elseif input.b and input.right and self.facing == DIR_LEFT then
+			self.facing = DIR_RIGHT
+		end
+
+		-- Continue auto-walking
+		if self.facing == DIR_LEFT then
+			self.worldX -= self.moveSpeed
+		else
+			self.worldX += self.moveSpeed
+		end
+
+		-- Animate
+		self:toggleWalkFrame(false)
+
+		-- Check if reached edge
+		if self.worldX <= minX or self.worldX >= maxX then
+			self.currentFrame = FRAME_STAND_RIGHT
+			return STATE_IDLE
+		end
+
+		return STATE_AUTO_WALKING
+	end,
+}
+
+---State handlers table
+local stateHandlers = {
+	[STATE_IDLE] = idleState,
+	[STATE_WALKING] = walkingState,
+	[STATE_AUTO_WALKING] = autoWalkingState,
+}
+
+---Change player state
+---@param newState string The new state to transition to
+function Player:changeState(newState)
+	if self.state == newState then
+		return
+	end
+
+	-- Call exit handler if it exists
+	local oldHandler = stateHandlers[self.state]
+	if oldHandler and oldHandler.exit then
+		oldHandler.exit(self)
+	end
+
+	-- Change state
+	self.state = newState
+
+	-- Call enter handler if it exists
+	local newHandler = stateHandlers[self.state]
+	if newHandler and newHandler.enter then
+		newHandler.enter(self)
+	end
+end
+
+---Handle player input and movement (FSM-based)
 function Player:update()
 	-- Don't process movement if player is disabled (e.g., during dialog)
 	if not self.canMove then
 		return
 	end
 
-	local moved = false
-	local movingLeft = playdate.buttonIsPressed(playdate.kButtonLeft)
-	local movingRight = playdate.buttonIsPressed(playdate.kButtonRight)
-	local pressedUp = playdate.buttonIsPressed(playdate.kButtonUp)
-	local pressedDown = playdate.buttonIsPressed(playdate.kButtonDown)
-	local pressedB = playdate.buttonIsPressed(playdate.kButtonB)
+	-- Gather input
+	local input = self:gatherInput()
 
 	-- Clear ignore flags when buttons are released
-	if not pressedUp then
+	if not input.up then
 		self.ignoreUpUntilRelease = false
 	end
-	if not pressedDown then
+	if not input.down then
 		self.ignoreDownUntilRelease = false
 	end
 
-	-- Calculate map boundaries
+	-- Get current state handler
+	local handler = stateHandlers[self.state]
+	if not handler then
+		error("Invalid player state: " .. tostring(self.state))
+	end
+
+	-- Update state and get next state
+	local nextState = handler.update(self, input)
+
+	-- Transition to next state if different
+	if nextState and nextState ~= self.state then
+		self:changeState(nextState)
+	end
+
+	-- Update wasMoving flags for next frame
+	self.wasMovingLeft = input.left
+	self.wasMovingRight = input.right
+
+	-- Clamp player position to map boundaries
 	local minX = self.halfWidth
 	local maxX = self.mapWidth - self.halfWidth
 
-	-- Handle input priority: Up/Down > Left/Right
-	if pressedUp and not self.ignoreUpUntilRelease then
-		-- Stop auto-walk if active
-		self.autoWalkDirection = nil
-		-- Face back (away from camera)
-		self.currentFrame = FRAME_BACK
-		self.animFrameCounter = 0
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-	elseif pressedDown and not self.ignoreDownUntilRelease then
-		-- Stop auto-walk if active
-		self.autoWalkDirection = nil
-		-- Face front (toward camera)
-		self.currentFrame = FRAME_FRONT
-		self.animFrameCounter = 0
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-	elseif movingLeft then
-		-- Left is pressed
-		if pressedB and not self.wasMovingLeft then
-			-- B + Left (first press): start auto-walk
-			self.autoWalkDirection = DIR_LEFT
-			self.facing = DIR_LEFT
-			-- Start with walk frame for immediate animation
-			self.currentFrame = FRAME_WALK_RIGHT
-			self.animFrameCounter = 0
-		elseif not pressedB then
-			-- Left without B: stop auto-walk, do manual movement
-			self.autoWalkDirection = nil
-			self.worldX -= self.moveSpeed
-			self.facing = DIR_LEFT
-			moved = true
-
-			local justPressed = not self.wasMovingLeft
-			self:toggleWalkFrame(justPressed)
-		end
-		-- else: B + Left held (auto-walk already active), handled in auto-walk section below
-		self.wasMovingLeft = true
-		self.wasMovingRight = false
-	elseif movingRight then
-		-- Right is pressed
-		if pressedB and not self.wasMovingRight then
-			-- B + Right (first press): start auto-walk
-			self.autoWalkDirection = DIR_RIGHT
-			self.facing = DIR_RIGHT
-			-- Start with walk frame for immediate animation
-			self.currentFrame = FRAME_WALK_RIGHT
-			self.animFrameCounter = 0
-		elseif not pressedB then
-			-- Right without B: stop auto-walk, do manual movement
-			self.autoWalkDirection = nil
-			self.worldX += self.moveSpeed
-			self.facing = DIR_RIGHT
-			moved = true
-
-			local justPressed = not self.wasMovingRight
-			self:toggleWalkFrame(justPressed)
-		end
-		-- else: B + Right held (auto-walk already active), handled in auto-walk section below
-		self.wasMovingRight = true
-		self.wasMovingLeft = false
-	else
-		-- No directional button pressed
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-		-- Only reset counter if not auto-walking
-		if not self.autoWalkDirection then
-			self.animFrameCounter = 0
-		end
-	end
-
-	-- Execute auto-walk if active
-	if self.autoWalkDirection then
-		if self.autoWalkDirection == DIR_LEFT then
-			self.worldX -= self.moveSpeed
-		else -- DIR_RIGHT
-			self.worldX += self.moveSpeed
-		end
-		moved = true
-
-		-- Animate walk (throttled)
-		self:toggleWalkFrame(false)
-
-		-- Check if reached edge - stop and show standing pose
-		if self.worldX <= minX or self.worldX >= maxX then
-			self.autoWalkDirection = nil
-			self.currentFrame = FRAME_STAND_RIGHT
-			self.animFrameCounter = 0
-		end
-	end
-
-	-- Clamp player position to map boundaries
 	if self.worldX < minX then
 		self.worldX = minX
 	elseif self.worldX > maxX then
 		self.worldX = maxX
 	end
 
-	-- Update camera based on player position
-	if moved then
+	-- Update camera if player is moving
+	if self.state == STATE_WALKING or self.state == STATE_AUTO_WALKING then
 		self.camera:update(self.worldX)
 		self:updateScreenPosition()
 	end
