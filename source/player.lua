@@ -37,6 +37,7 @@ local DIR_RIGHT <const> = 2
 ---@field wasMovingRight boolean Whether right was pressed in the previous frame
 ---@field ignoreUpUntilRelease boolean Ignore UP key until released (after map transition)
 ---@field ignoreDownUntilRelease boolean Ignore DOWN key until released (after map transition)
+---@field autoWalkDirection number? Auto-walk direction (DIR_LEFT or DIR_RIGHT), nil if not auto-walking
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = gfx.sprite })
@@ -69,6 +70,7 @@ function Player.new(config)
 	self.wasMovingRight = false
 	self.ignoreUpUntilRelease = false -- Ignore UP key until released (used after map transition)
 	self.ignoreDownUntilRelease = false -- Ignore DOWN key until released (used after map transition)
+	self.autoWalkDirection = nil -- Auto-walk direction (DIR_LEFT or DIR_RIGHT), nil if not auto-walking
 
 	-- Set initial image (standing facing right)
 	self:setImage(self.images:getImage(self.currentFrame))
@@ -170,6 +172,7 @@ function Player:update()
 	local movingRight = playdate.buttonIsPressed(playdate.kButtonRight)
 	local pressedUp = playdate.buttonIsPressed(playdate.kButtonUp)
 	local pressedDown = playdate.buttonIsPressed(playdate.kButtonDown)
+	local pressedB = playdate.buttonIsPressed(playdate.kButtonB)
 
 	-- Clear ignore flags when buttons are released
 	if not pressedUp then
@@ -179,56 +182,102 @@ function Player:update()
 		self.ignoreDownUntilRelease = false
 	end
 
-	-- Handle input - currentFrame persists when no button is pressed
-	if pressedUp and not self.ignoreUpUntilRelease then
-		-- Face back (away from camera)
-		self.currentFrame = FRAME_BACK
-		self.animFrameCounter = 0 -- Reset counter when changing direction
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-	elseif pressedDown and not self.ignoreDownUntilRelease then
-		-- Face front (toward camera)
-		self.currentFrame = FRAME_FRONT
-		self.animFrameCounter = 0 -- Reset counter when changing direction
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-	elseif movingLeft then
-		-- Move left with walk animation
-		self.worldX -= self.moveSpeed
-		self.facing = DIR_LEFT
-		moved = true
-
-		-- Check if this is a new press (toggle immediately) or continued hold (throttled)
-		local justPressed = not self.wasMovingLeft
-		self:toggleWalkFrame(justPressed)
-		self.wasMovingLeft = true
-		self.wasMovingRight = false
-	elseif movingRight then
-		-- Move right with walk animation
-		self.worldX += self.moveSpeed
-		self.facing = DIR_RIGHT
-		moved = true
-
-		-- Check if this is a new press (toggle immediately) or continued hold (throttled)
-		local justPressed = not self.wasMovingRight
-		self:toggleWalkFrame(justPressed)
-		self.wasMovingRight = true
-		self.wasMovingLeft = false
-	else
-		-- No button pressed - keep currentFrame as-is (persists last frame)
-		-- Reset counter so next movement starts fresh
-		self.animFrameCounter = 0
-		self.wasMovingLeft = false
-		self.wasMovingRight = false
-	end
-
-	-- Clamp player position to map boundaries
-	-- Since anchor is at center (0.5), worldX represents the sprite's center
-	-- Left edge: worldX - halfWidth should be >= 0
-	-- Right edge: worldX + halfWidth should be <= mapWidth
+	-- Calculate map boundaries
 	local minX = self.halfWidth
 	local maxX = self.mapWidth - self.halfWidth
 
+	-- Handle input priority: Up/Down > Left/Right
+	if pressedUp and not self.ignoreUpUntilRelease then
+		-- Stop auto-walk if active
+		self.autoWalkDirection = nil
+		-- Face back (away from camera)
+		self.currentFrame = FRAME_BACK
+		self.animFrameCounter = 0
+		self.wasMovingLeft = false
+		self.wasMovingRight = false
+	elseif pressedDown and not self.ignoreDownUntilRelease then
+		-- Stop auto-walk if active
+		self.autoWalkDirection = nil
+		-- Face front (toward camera)
+		self.currentFrame = FRAME_FRONT
+		self.animFrameCounter = 0
+		self.wasMovingLeft = false
+		self.wasMovingRight = false
+	elseif movingLeft then
+		-- Left is pressed
+		if pressedB and not self.wasMovingLeft then
+			-- B + Left (first press): start auto-walk
+			self.autoWalkDirection = DIR_LEFT
+			self.facing = DIR_LEFT
+			-- Start with walk frame for immediate animation
+			self.currentFrame = FRAME_WALK_RIGHT
+			self.animFrameCounter = 0
+		elseif not pressedB then
+			-- Left without B: stop auto-walk, do manual movement
+			self.autoWalkDirection = nil
+			self.worldX -= self.moveSpeed
+			self.facing = DIR_LEFT
+			moved = true
+
+			local justPressed = not self.wasMovingLeft
+			self:toggleWalkFrame(justPressed)
+		end
+		-- else: B + Left held (auto-walk already active), handled in auto-walk section below
+		self.wasMovingLeft = true
+		self.wasMovingRight = false
+	elseif movingRight then
+		-- Right is pressed
+		if pressedB and not self.wasMovingRight then
+			-- B + Right (first press): start auto-walk
+			self.autoWalkDirection = DIR_RIGHT
+			self.facing = DIR_RIGHT
+			-- Start with walk frame for immediate animation
+			self.currentFrame = FRAME_WALK_RIGHT
+			self.animFrameCounter = 0
+		elseif not pressedB then
+			-- Right without B: stop auto-walk, do manual movement
+			self.autoWalkDirection = nil
+			self.worldX += self.moveSpeed
+			self.facing = DIR_RIGHT
+			moved = true
+
+			local justPressed = not self.wasMovingRight
+			self:toggleWalkFrame(justPressed)
+		end
+		-- else: B + Right held (auto-walk already active), handled in auto-walk section below
+		self.wasMovingRight = true
+		self.wasMovingLeft = false
+	else
+		-- No directional button pressed
+		self.wasMovingLeft = false
+		self.wasMovingRight = false
+		-- Only reset counter if not auto-walking
+		if not self.autoWalkDirection then
+			self.animFrameCounter = 0
+		end
+	end
+
+	-- Execute auto-walk if active
+	if self.autoWalkDirection then
+		if self.autoWalkDirection == DIR_LEFT then
+			self.worldX -= self.moveSpeed
+		else -- DIR_RIGHT
+			self.worldX += self.moveSpeed
+		end
+		moved = true
+
+		-- Animate walk (throttled)
+		self:toggleWalkFrame(false)
+
+		-- Check if reached edge - stop and show standing pose
+		if self.worldX <= minX or self.worldX >= maxX then
+			self.autoWalkDirection = nil
+			self.currentFrame = FRAME_STAND_RIGHT
+			self.animFrameCounter = 0
+		end
+	end
+
+	-- Clamp player position to map boundaries
 	if self.worldX < minX then
 		self.worldX = minX
 	elseif self.worldX > maxX then
