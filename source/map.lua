@@ -151,4 +151,24 @@ function Map:setWidth(width)
 	self.width = width
 end
 
+---Load a new map image dynamically
+---@param imagePath string Path to the new map image (without extension)
+---@return boolean success Whether the image was loaded successfully
+function Map:loadImage(imagePath)
+	local newImage = gfx.image.new(imagePath)
+	if not newImage then
+		print("[Map] Failed to load map image: " .. imagePath)
+		return false
+	end
+
+	self.mapImage = newImage
+	local imgWidth, imgHeight = self.mapImage:getSize()
+	self.originalWidth = imgWidth
+	self.originalHeight = imgHeight
+	self.width = math.floor(imgWidth * self.scale)
+	self.height = math.floor(imgHeight * self.scale)
+
+	return true
+end
+
 return Map

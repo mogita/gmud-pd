@@ -35,6 +35,8 @@ local DIR_RIGHT <const> = 2
 ---@field animSpeedRatio number How many update frames to wait before toggling animation (higher = slower)
 ---@field wasMovingLeft boolean Whether left was pressed in the previous frame
 ---@field wasMovingRight boolean Whether right was pressed in the previous frame
+---@field ignoreUpUntilRelease boolean Ignore UP key until released (after map transition)
+---@field ignoreDownUntilRelease boolean Ignore DOWN key until released (after map transition)
 local Player = {}
 Player.__index = Player
 setmetatable(Player, { __index = gfx.sprite })
@@ -65,6 +67,8 @@ function Player.new(config)
 	self.animSpeedRatio = config.animSpeedRatio or 3
 	self.wasMovingLeft = false
 	self.wasMovingRight = false
+	self.ignoreUpUntilRelease = false -- Ignore UP key until released (used after map transition)
+	self.ignoreDownUntilRelease = false -- Ignore DOWN key until released (used after map transition)
 
 	-- Set initial image (standing facing right)
 	self:setImage(self.images:getImage(self.currentFrame))
@@ -167,14 +171,22 @@ function Player:update()
 	local pressedUp = playdate.buttonIsPressed(playdate.kButtonUp)
 	local pressedDown = playdate.buttonIsPressed(playdate.kButtonDown)
 
+	-- Clear ignore flags when buttons are released
+	if not pressedUp then
+		self.ignoreUpUntilRelease = false
+	end
+	if not pressedDown then
+		self.ignoreDownUntilRelease = false
+	end
+
 	-- Handle input - currentFrame persists when no button is pressed
-	if pressedUp then
+	if pressedUp and not self.ignoreUpUntilRelease then
 		-- Face back (away from camera)
 		self.currentFrame = FRAME_BACK
 		self.animFrameCounter = 0 -- Reset counter when changing direction
 		self.wasMovingLeft = false
 		self.wasMovingRight = false
-	elseif pressedDown then
+	elseif pressedDown and not self.ignoreDownUntilRelease then
 		-- Face front (toward camera)
 		self.currentFrame = FRAME_FRONT
 		self.animFrameCounter = 0 -- Reset counter when changing direction
@@ -255,6 +267,29 @@ end
 ---@return boolean
 function Player:isFacingUp()
 	return self.currentFrame == FRAME_BACK
+end
+
+---Set player facing direction by name
+---@param direction string "left", "right", "up", or "down"
+function Player:setFacing(direction)
+	if direction == "left" then
+		self.facing = DIR_LEFT
+		self.currentFrame = FRAME_STAND_RIGHT -- Use right frame, will be flipped
+	elseif direction == "right" then
+		self.facing = DIR_RIGHT
+		self.currentFrame = FRAME_STAND_RIGHT
+	elseif direction == "up" then
+		self.facing = DIR_RIGHT -- Reset to unflipped state for front/back frames
+		self.currentFrame = FRAME_BACK
+	elseif direction == "down" then
+		self.facing = DIR_RIGHT -- Reset to unflipped state for front/back frames
+		self.currentFrame = FRAME_FRONT
+	end
+	self.animFrameCounter = 0
+	-- Ignore UP/DOWN keys until released (prevents held button from overriding facing)
+	self.ignoreUpUntilRelease = true
+	self.ignoreDownUntilRelease = true
+	self:updateImage()
 end
 
 return Player

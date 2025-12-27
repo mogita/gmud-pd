@@ -104,7 +104,73 @@ function initialize()
 		showMessage = function(text)
 			dialog:showMessage(text)
 		end,
-		-- Future: add more context like dialogSystem, shopUI, combatSystem, etc.
+
+		-- Transition to a new map
+		-- @param mapId string The map identifier (e.g., "map22")
+		-- @param options table? { exitPosition: "left"|"right"|"center"|number, exitFacing: "left"|"right"|"up"|"down" }
+		transitionToMap = function(mapId, options)
+		options = options or {}
+
+		-- Extract map number from mapId (e.g., "map22" -> "22")
+		local mapNumber = mapId:match("map(%d+)")
+		if not mapNumber then
+			print("[Main] Invalid map ID: " .. mapId)
+			return false
+		end
+
+		-- Load new map image
+		local imagePath = "images/maps/" .. mapNumber
+		if not map:loadImage(imagePath) then
+			print("[Main] Failed to load map: " .. imagePath)
+			return false
+		end
+
+		-- Update camera with new map width
+		local mapWidth = map:getWidth()
+		camera.mapWidth = mapWidth
+		camera.offsetX = 0 -- Reset camera offset
+
+		-- Calculate player X position based on exitPosition
+		local playerX
+		local exitPos = options.exitPosition
+		if type(exitPos) == "number" then
+			playerX = exitPos
+		elseif exitPos == "left" then
+			playerX = player.halfWidth -- Leftmost valid position
+		elseif exitPos == "right" then
+			playerX = mapWidth - player.halfWidth -- Rightmost valid position
+		elseif exitPos == "center" then
+			playerX = mapWidth / 2
+		else
+			playerX = 50 -- Default fallback
+		end
+
+		-- Update player position and map width
+		player.worldX = playerX
+		player:setMapWidth(mapWidth)
+		player:updateScreenPosition()
+
+		-- Set player facing direction if specified
+		if options.exitFacing then
+			player:setFacing(options.exitFacing)
+		end
+
+		-- Load POIs for new map
+		poiManager:loadForMap(mapId)
+
+		-- Force background redraw
+		gfx.sprite.redrawBackground()
+
+		print(
+			"[Main] Transitioned to "
+				.. mapId
+				.. " at x="
+				.. playerX
+				.. ", facing="
+				.. (options.exitFacing or "unchanged")
+		)
+		return true
+		end,
 	})
 
 	-- Load POIs for the initial map

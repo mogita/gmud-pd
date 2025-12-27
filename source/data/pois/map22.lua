@@ -1,8 +1,8 @@
--- POI definitions for map1
+-- POI definitions for map22
 --
 -- Categories (required):
 --   "interactive" - Objects (well, sign, board) - trigger: A
---   "passage"     - Transitions (door, path)    - trigger: up
+--   "passage"     - Transitions (door, path)    - trigger: up/down
 --   "npc"         - Characters with menus       - trigger: A
 --
 -- Fields:
@@ -14,29 +14,21 @@
 --   data: table         - Category-specific data (optional)
 --
 -- Passage data fields:
---   destination: string - Target map ID (e.g., "map22")
+--   destination: string - Target map ID (e.g., "map1")
 --   exitPosition: "left"|"right"|"center"|number - Player X on destination
 --   exitFacing: "left"|"right"|"up"|"down" - Player facing after transition
 
 return {
-	-- Well
+	-- Exit to map1
 	{
-		id = "well_1",
-		category = "interactive",
-		x = 116,
-		width = 25,
-		handlerName = "drink_water",
-	},
-	-- Passage to map22 (indoor room)
-	{
-		id = "passage_to_22",
+		id = "passage_to_1",
 		category = "passage",
-		x = 280,
+		x = 0,
 		width = 30,
 		data = {
-			destination = "map22",
-			exitPosition = "left", -- Place player at leftmost position
-			exitFacing = "right", -- Face right after entering
+			destination = "map1",
+			exitPosition = 295, -- Mid position of passage_to_22 (280 + 30/2)
+			exitFacing = "down", -- Face down (toward camera) after transition
 		},
 	},
 }
